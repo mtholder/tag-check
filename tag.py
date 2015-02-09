@@ -206,7 +206,7 @@ class TAGDAG(object):
         debug_var(2, 'leaf_node_groups', leaf_node_groups)
         tree_groups = tuple(leaf_node_groups + list(tree_clade_list))
         debug_var(2, 'tree_groups', tree_groups)
-        debug(1, 'processing round = {p:d} tree_id = {t}'.format(p=processing_round, t=str(tree_ind)))
+        debug(0, 'processing round = {p:d} tree_id = {t}'.format(p=processing_round, t=str(tree_ind)))
         if self.del_edges_for_reproc and processing_round > 0:
             self.del_edges_for_tree(tree_ind)
         tag_nodes_for_this_tree = {}
@@ -239,6 +239,8 @@ class TAGDAG(object):
             #   child nodes in the next set of edges for this tree.
             tag_nodes_for_this_tree[clade_leaf_set] = tag_node_set
             debug_var(1, 'aligned tag_node_set', tag_node_set)
+            self.debug_print(1)
+        if VERBOSE == 0:
             self.debug_print(0)
 
     def align_in_node(self, tree_leaf_set, clade_leaf_set, children_TAG_node_set_list, key_for_in_node, tree_ind):
