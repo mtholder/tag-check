@@ -3,7 +3,7 @@ A standalone python tool for building tree-alignment-graphs (sensu Smith, Brown,
 
 Not vetted at all. WARNING!
 
-usage:
+## usage
 
 Input order should not affect the TAG.
 
@@ -25,6 +25,11 @@ This runs the program in a mode where the edges of a tree *are* removed before t
 
 At this point neither case generates a pair of isomorphic graphs. Which could be a bug in this script...
 
+## Examples
+
+`tag.py` itself is a simple example of 3 trees with a toal of 4 leaves.
+
+`ot-tag.py` tweaks that by adding one more leaf as the outgroup to every tree in the `tag.py` example and also processing a complete (but uninformative) taxonomy as the first input. This makes the example more similar to how the TAGs are used in the open tree project.
 
 ## TODO
 
