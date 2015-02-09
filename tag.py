@@ -2,23 +2,31 @@
 import sys
 MAX_NUM_PROCESSING_ROUNDS = 10
 def debug_var(var_name, var):
-    pass #sys.stderr.write('tag.py DEBUG: {} = {}\n'.format(var_name, var))
+    sys.stderr.write('tag.py DEBUG: {} = {}\n'.format(var_name, var))
 class TAGNode(object):
     def __init__(self, index, name, leaf):
         self.index = index
         self.edge2parents = set()
         self.edge2children = set()
         self.bijects_to_leaf = leaf
+        self.name = name
     def child_in_set(self, possible_child):
         for edge in self.edge2children:
             if self.child is possible_child:
                 return True
         return False
+    def __str__(self):
+        c = ', '.join(['Node({n}) via Edge({e})'.format(e=i.index, n=i.parent.index) for i in self.edge2parents])
+        p = ', '.join(['Node({n}) via Edge({e})'.format(e=i.index, n=i.child.index) for i in self.edge2children])
+        fmt = 'TAG Node({i:d}) bijects_to_leaf={b}. CHILDOF= [{c}]. PARENTOF=[{p}]\n'
+        return fmt.format(i=self.index, b=str(self.bijects_to_leaf), c=c, p=p)
     @property
     def leaf_set(self):
         ls = set()
         if self.edge2children:
-            assert self.bijects_to_leaf is None
+            if self.bijects_to_leaf is not None:
+                debug_var('leaf_set node: ', str(self))
+                assert self.bijects_to_leaf is None
             for edge in self.edge2children:
                 cls = edge.child.leaf_set
                 ls.update(cls)
@@ -28,9 +36,16 @@ class TAGNode(object):
         return frozenset(ls)
 class TAGEdge(object):
     def __init__(self, child, parent, index, label):
+        assert child is not parent
         self.child, self.parent = child, parent
         self.index = index
         self.label = label
+    def __str__(self):
+        frag = 'Node({c:d}) --[via edge {e:d} from tree{l}]--> Node({p:d}) '
+        return frag.format(c=self.child.index, 
+                           p=self.parent.index,
+                           e=self.index,
+                           l=str(self.label))
 
 class TAGDAG(object):
     def __init__(self, tree_list=None):
@@ -65,12 +80,7 @@ class TAGDAG(object):
         for nd in self._nodes:
             e2plist = list(nd.edge2parents)
             if e2plist:
-                frag = 'Node({c:d}) --[via edge {e:d} from tree{l}]--> Node({p:d}) '
-                rel_str_list = [frag.format(c=e.child.index, 
-                                            p=e.parent.index,
-                                            e=e.index,
-                                            l=str(e.label)) for e in e2plist]
-                e2plist_str = ',\n    '.join(rel_str_list)
+                e2plist_str = ',\n    '.join([str(e) for e in e2plist])
             else:
                 e2plist_str = 'Child of no nodes.'
             ls = [str(i) for i in nd.leaf_set]
@@ -106,23 +116,23 @@ class TAGDAG(object):
     def align_tree(self, tree_leaf_set, tree_clade_list, tree_ind, processing_round):
         leaf_names = [i for i in tree_leaf_set]
         leaf_names.sort() # not necessary, but makes the process easier to follow
-        debug_var('leaf_names', leaf_names)
+        #debug_var('leaf_names', leaf_names)
         leaf_node_groups = [(frozenset(i), frozenset()) for i in leaf_names]
-        debug_var('leaf_node_groups', leaf_node_groups)
+        #debug_var('leaf_node_groups', leaf_node_groups)
         tree_groups = tuple(leaf_node_groups + list(tree_clade_list))
-        debug_var('tree_groups', tree_groups)
+        #debug_var('tree_groups', tree_groups)
         
         tag_nodes_for_this_tree = {}
         for group_ind, group in enumerate(tree_groups):
             key_for_in_node = (processing_round, tree_ind, group_ind)
             clade_leaf_set = group[0]
-            debug_var('clade_leaf_set', clade_leaf_set)
+            #debug_var('clade_leaf_set', clade_leaf_set)
             # find the set of child nodes in the TAG that correspond to the 
             #   children of this clade. Since we are going in postorder
             #   down this input tree, we should not get a KeyError from
             #   tag_nodes_for_this_tree if the input tree descriptions are valid
             clade_children_leaf_set_iterable = group[1]
-            debug_var('clade_children_leaf_set_iterable', clade_children_leaf_set_iterable)
+            #debug_var('clade_children_leaf_set_iterable', clade_children_leaf_set_iterable)
             children_TAG_node_set_list = []
             for clade_children_leaf_set in clade_children_leaf_set_iterable:
                 #for each child in the input tree, whe should have mapped it to a set of TAG nodes
@@ -143,6 +153,7 @@ class TAGDAG(object):
             self.debug_print()
 
     def align_in_node(self, tree_leaf_set, clade_leaf_set, children_TAG_node_set_list, key_for_in_node, tree_ind):
+        debug_var('align_in_node clade_leaf_set', clade_leaf_set)
         all_children_in_tag = set()
         for children_TAG_node_set in children_TAG_node_set_list:
             all_children_in_tag.update(children_TAG_node_set)
