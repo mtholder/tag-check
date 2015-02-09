@@ -140,8 +140,8 @@ class TAGDAG(object):
                 continue
             e2plist = list(nd.edge2parents)
             if e2plist:
-                e2plist_str = ',\n    '.join([str(e) for e in e2plist])
-                c = 'CHILDOF relationship(s):\n    {c}\n'.format(c=e2plist_str)
+                e2plist_str = ',\n      '.join([str(e) for e in e2plist])
+                c = 'CHILDOF relationship(s):\n      {c}\n'.format(c=e2plist_str)
             else:
                 c = 'Not a CHILDOF any node.\n'
 
@@ -308,7 +308,19 @@ class TAGDAG(object):
                 return True
             self.num_nodes_prev = self.num_nodes
             return False
-        
+
+
+def main(tree_list, del_edge_on_reproc):
+    debug(-50, 'VERBOSE={v:d} DEL_EDGE_ON_REPROC={d:b}'.format(v=VERBOSE, d=del_edge_on_reproc))
+    try:
+        tag = TAGDAG(del_edges_for_reproc=del_edge_on_reproc)
+        tag.process_to_completion(tree_list)
+    except RuntimeError as x:
+        sys.stderr.write('TAG on exit\n')
+        tag.debug_print(-1)
+        sys.stderr.write('ERROR: TAG did not stop growing!\n')
+        sys.exit(x)
+    tag.debug_print(-1, sys.stdout)
 
 
 if __name__ == '__main__':
@@ -319,7 +331,7 @@ if __name__ == '__main__':
     if 'VERBOSE' in os.environ:
         VERBOSE = int(os.environ['VERBOSE'])
     FIRST_CASE = 'FIRST_CASE' in os.environ
-    DEL_EDGE_ON_REPROC = 'DEL_EDGE_ON_REPROC' in os.environ
+    del_edges_for_reproc = 'DEL_EDGE_ON_REPROC' in os.environ
     tree1 = {'leaf_set': frozenset('ACD'),
              'clades': ((frozenset('AC'), frozenset([frozenset('A'), frozenset('C')])),
                         (frozenset('ACD'), frozenset([frozenset('AC'), frozenset('D')]))), }
@@ -329,16 +341,9 @@ if __name__ == '__main__':
     tree3 = {'leaf_set': frozenset('ABC'),
              'clades': ((frozenset('AB'), frozenset([frozenset('A'), frozenset('B')])),
                         (frozenset('ABC'), frozenset([frozenset('AB'), frozenset('C')]))), }
-    debug(-50, 'VERBOSE={v:d} FIRST_CASE={f:b} DEL_EDGE_ON_REPROC={d:b}'.format(v=VERBOSE, f=FIRST_CASE, d=DEL_EDGE_ON_REPROC))
-    try:
-        tag = TAGDAG(del_edges_for_reproc=DEL_EDGE_ON_REPROC)
-        if FIRST_CASE:
-            tag.process_to_completion(tree_list=[tree1, tree2, tree3])
-        else:
-            tag.process_to_completion(tree_list=[tree1, tree3, tree2])
-    except RuntimeError as x:
-        sys.stderr.write('TAG on exit\n')
-        tag.debug_print(-1)
-        sys.stderr.write('ERROR: TAG did not stop growing!\n')
-        sys.exit(x)
-    tag.debug_print(-1, sys.stdout)
+    debug(-50, 'VERBOSE={v:d} FIRST_CASE={f:b} DEL_EDGE_ON_REPROC={d:b}'.format(v=VERBOSE, f=FIRST_CASE, d=del_edges_for_reproc))
+    if FIRST_CASE:
+        tree_list = [tree1, tree2, tree3]
+    else:
+        tree_list = [tree1, tree3, tree2]
+    main(tree_list, del_edges_for_reproc)
