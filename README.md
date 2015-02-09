@@ -30,3 +30,7 @@ At this point neither case generates a pair of isomorphic graphs. Which could be
 
   1. create diff-able summary of TAG to make it easier to check problem cases.
   2. create newick reader to generate the funky clade description format
+
+
+## Acknowledgements
+Thanks to Ruchi Chaudhary, Jonathan Rees, Stephen Smith, Joseph Brown, and Cody Hinchliff for discussions.
