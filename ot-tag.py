@@ -13,6 +13,8 @@ if __name__ == '__main__':
     if 'VERBOSE' in os.environ:
         VERBOSE = int(os.environ['VERBOSE'])
     FIRST_CASE = 'FIRST_CASE' in os.environ
+    ALIGNED_OUTGROUP_DEF = 'ALIGNED_OUTGROUP_DEF' in os.environ
+    INFINITE_LOOP = 'INFINITE_LOOP' in os.environ
     del_edges_for_reproc = 'DEL_EDGE_ON_REPROC' in os.environ
     tree0 = {'leaf_set': frozenset('ABCDE'),
              'clades': ((frozenset('ABCDE'), frozenset([frozenset('A'),frozenset('B'),frozenset('C'),frozenset('D'),frozenset('E'),])),), }
@@ -33,4 +35,7 @@ if __name__ == '__main__':
         tree_list = [tree0, tree1, tree2, tree3]
     else:
         tree_list = [tree0, tree1, tree3, tree2]
-    main(tree_list, del_edges_for_reproc)
+    main(tree_list, 
+         del_edges_for_reproc,
+         subset_of_aligned_outgroup_def=ALIGNED_OUTGROUP_DEF,
+         infinite_loop=INFINITE_LOOP)

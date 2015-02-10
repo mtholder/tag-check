@@ -4,6 +4,7 @@ MAX_NUM_PROCESSING_ROUNDS = 4
 
 VERBOSE = -1
 CRASHING = False
+
 def debug_var(level, var_name, var):
     if VERBOSE < level:
         return
@@ -25,6 +26,13 @@ class TAGNode(object):
         self.edge2children = set()
         self.bijects_to_leaf = leaf
         self.name = name
+
+    def get_incoming_tree_set(self):
+        tree_set = set()
+        for edge in self.edge2children:
+            tree_set.add(edge.label)
+        return frozenset(tree_set)
+    incoming_tree_set = property(get_incoming_tree_set)
     def is_empty(self):
         return (self.bijects_to_leaf is None) and (not self.edge2children)
     def child_in_set(self, possible_child):
@@ -93,16 +101,26 @@ class TAGEdge(object):
                            pl=self.parent.leaf_set_str())
 
 class TAGDAG(object):
-    def __init__(self, tree_list=None, del_edges_for_reproc=False):
+    def __init__(self,
+                 tree_list=None,
+                 del_edges_for_reproc=False,
+                 subset_of_aligned_outgroup_def=False,
+                 infinite_loop=False):
+        self._leaf_set_for_trees = {}
         self._root = None
         self._next_node_ind = 0
         self._edge_index = 0
         self._leaf_set = set()
         self._nodes = []
         self.processing_round = -1
+        self.subset_of_aligned_outgroup_def = subset_of_aligned_outgroup_def
+        self.infinite_loop = infinite_loop
         if tree_list is not None:
             self.process_to_completion(tree_list)
         self.del_edges_for_reproc = del_edges_for_reproc
+    def get_leaf_set_for_tree(self, tree_id):
+        return self._leaf_set_for_trees.get(tree_id)
+
     def create_new_node(self, key_for_in_node, bijects_to_leaf):
         if bijects_to_leaf is not None:
             self._leaf_set.add(bijects_to_leaf)
@@ -171,7 +189,15 @@ class TAGDAG(object):
                 continue
             node_ingroup = node.leaf_set
             assert node_ingroup
-            node_outgroup = tag_leafset - node_ingroup
+            if self.subset_of_aligned_outgroup_def:
+                node_tree_leaf_set = set()
+                relevant_trees = node.incoming_tree_set
+                for tree in relevant_trees:
+                    tree_leaf_set = self.get_leaf_set_for_tree(tree)
+                    node_tree_leaf_set.update(tree_leaf_set)
+                node_outgroup = tag_leafset - node_ingroup
+            else:
+                node_outgroup = tag_leafset - node_ingroup
             if (input_ingroup & node_ingroup) \
                and (not (input_ingroup & node_outgroup)) \
                and (not (node_ingroup & input_outgroup)):
@@ -200,6 +226,8 @@ class TAGDAG(object):
                 node.edge2children.remove(td)
     def align_tree(self, tree_leaf_set, tree_clade_list, tree_ind, processing_round):
         leaf_names = [i for i in tree_leaf_set]
+        if tree_ind not in self._leaf_set_for_trees:
+            self._leaf_set_for_trees[tree_ind] = frozenset(tree_leaf_set)
         leaf_names.sort() # not necessary, but makes the process easier to follow
         debug_var(2, 'leaf_names', leaf_names)
         leaf_node_groups = [(frozenset(i), frozenset()) for i in leaf_names]
@@ -298,6 +326,8 @@ class TAGDAG(object):
                 raise RuntimeError('MAX_NUM_PROCESSING_ROUNDS = {} exceeded'.format(MAX_NUM_PROCESSING_ROUNDS))
 
     def stopping_criterion_triggered(self):
+        if self.infinite_loop:
+            return False
         if self.del_edges_for_reproc:
             if self.num_connected_nodes == self.num_connected_nodes_prev:
                 return True
@@ -310,10 +340,13 @@ class TAGDAG(object):
             return False
 
 
-def main(tree_list, del_edge_on_reproc):
-    debug(-50, 'VERBOSE={v:d} DEL_EDGE_ON_REPROC={d:b}'.format(v=VERBOSE, d=del_edge_on_reproc))
+def main(tree_list, del_edge_on_reproc, subset_of_aligned_outgroup_def, infinite_loop):
+    fms = 'VERBOSE={v:d} DEL_EDGE_ON_REPROC={d:b} ALIGNED_OUTGROUP_DEF={a:b} INFINITE_LOOP={i:b}'
+    debug(-50, fms.format(v=VERBOSE, d=del_edge_on_reproc, a=subset_of_aligned_outgroup_def, i=infinite_loop))
     try:
-        tag = TAGDAG(del_edges_for_reproc=del_edge_on_reproc)
+        tag = TAGDAG(del_edges_for_reproc=del_edge_on_reproc,
+                     subset_of_aligned_outgroup_def=subset_of_aligned_outgroup_def,
+                     infinite_loop=infinite_loop)
         tag.process_to_completion(tree_list)
     except RuntimeError as x:
         sys.stderr.write('TAG on exit\n')
@@ -331,6 +364,8 @@ if __name__ == '__main__':
     if 'VERBOSE' in os.environ:
         VERBOSE = int(os.environ['VERBOSE'])
     FIRST_CASE = 'FIRST_CASE' in os.environ
+    ALIGNED_OUTGROUP_DEF = 'ALIGNED_OUTGROUP_DEF' in os.environ
+    INFINITE_LOOP = 'INFINITE_LOOP' in os.environ
     del_edges_for_reproc = 'DEL_EDGE_ON_REPROC' in os.environ
     tree1 = {'leaf_set': frozenset('ACD'),
              'clades': ((frozenset('AC'), frozenset([frozenset('A'), frozenset('C')])),
@@ -346,4 +381,7 @@ if __name__ == '__main__':
         tree_list = [tree1, tree2, tree3]
     else:
         tree_list = [tree1, tree3, tree2]
-    main(tree_list, del_edges_for_reproc)
+    main(tree_list,
+         del_edges_for_reproc,
+         subset_of_aligned_outgroup_def=ALIGNED_OUTGROUP_DEF,
+         infinite_loop=INFINITE_LOOP)
